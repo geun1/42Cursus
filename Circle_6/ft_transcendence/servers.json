@@ -1,0 +1,13 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "Transcendence",
+            "Group": "Servers",
+            "Port": 5432,
+            "Username": "admin",
+            "Host": "ts-back",
+            "SSLMode": "prefer",
+            "MaintenanceDB": "pikapong"
+        }
+    }
+}

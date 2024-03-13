@@ -1,0 +1,525 @@
+openapi: 3.0.3
+info:
+  title: Transcendence
+  description: |-
+    Transcendence API 화이팅
+  termsOfService: http://swagger.io/terms/
+  contact:
+    email: apiteam@swagger.io
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+externalDocs:
+  description: Find out more about Swagger
+  url: http://swagger.io
+servers:
+  - url: http://localhost:8000/
+tags:
+  - name: users
+    description: 유저/토큰/2FA 관련
+    externalDocs:
+      description: Find out more
+      url: http://swagger.io
+  - name: friends
+    description: 친구 추가/검색/리스트/삭제
+    externalDocs:
+      description: Find out more
+      url: http://swagger.io
+  - name: game
+    description: 게임 관련
+    externalDocs:
+      description: Find out more
+      url: http://swagger.io
+  - name: loginHistories
+    description: 로그인 로그 관련
+    externalDocs:
+      description: Find out more
+      url: http://swagger.io
+paths:
+  /users/login/create/{code}:
+    get:
+      tags:
+        - users
+      summary: 42로 로그인
+      description: |-
+        `42로 로그인` 및 `2FA` 요청
+        
+        백엔드에서는 프론트로부터 42에서 코드값 받아오면 2FA로 디비 생성,
+        OTP 번호를 해당 이메일로 발송
+      parameters:
+        - name: code
+          in: path
+          description: 42 로그인 API에서 제공받은 code
+          required: true
+          schema:
+            type: string
+            example: "code_from_42_login_api"
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "New User Created"
+                  access_token:
+                    type: string
+                    example: "aooiHO1U2HOIH12IHFKJADHSF"
+        '400':
+          description: Invalid status value
+        '500':
+          description: 서버에러
+  /users/login/verify:
+    post:
+      tags:
+        - users
+      summary: OTP 코드 검증
+      description: |-
+        `OTP` 코드 검증
+      requestBody:
+        description: OTP 검증을 위해서 필요한 정보
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                input_number:
+                  type: string
+                  example: "012345"
+                access_token:
+                  type: string
+                  example: "aooiHO1U2HOIH12IHFKJADHSF"
+        required: true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "OK"
+                  jwt_token:
+                    type: string
+                    example: "ajfioanewgkadn.jaoeinfoaksnfawengo.oaienfoanpeijfnafghaporhgnjansdkjgbawegb"
+        '400':
+          description: Invalid status value
+        '500':
+          description: 서버에러
+  /users/info/read:
+    get:
+      security:
+        - jwt: []
+      tags:
+        - users
+      summary: 유저 프로필 정보 및 전적 보기
+      description: |-
+        유저 프로필 정보 및 전적 보기
+      parameters:
+        - name: target_pk_id
+          in: query
+          description: |-
+            유저 PK 값(XXXX인트라ID 아님XXXX!)
+            
+            비워서 보내면 백엔드에서 토큰에서 `target_pk_id` 유추
+          required: false
+          schema:
+            type: string
+            example: "pikachu"
+      responses:
+        '200':
+          description: |-
+            successful operation
+            
+            `game_result`: 게임 상태
+               - win
+               - loose
+               - win_by_other
+               - loose_by_other
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  intra_pk_id:
+                    type: string
+                    example: "kafoeinfalksdnf"
+                  intra_id:
+                    type: string
+                    example: "pikachu"
+                  nick_name:
+                    type: string
+                    example: ""
+                  profile_picture:
+                    type: string
+                    example: "https://storage.transcendence.io/pikachu_thumbnail.png"
+                  bio:
+                    type: string
+                    example: ""
+                  histories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        intra_pk_id:
+                          type: string
+                          example: "kjaeifsdfsdf"
+                        intra_id:
+                          type: string
+                          example: "raichu"
+                        nick_name:
+                          type: string
+                          example: "raichuchu"
+                        start_time:
+                          type: string
+                          format: date-time
+                          example: "2024-01-19T17:32:28Z"
+                        score:
+                          type: integer
+                          example: 4
+                        opponent_score:
+                          type: integer
+                          example: 7
+                        game_result:
+                          type: string
+                          enum: [win, loose, win_by_other, loose_by_other]
+                          example: win
+        '400':
+          description: 디코딩 실패 혹은 JWT 토큰이 포함되지 않은 경우
+        '401':
+          description: JWT 토큰 만료
+        '404':
+          description: target_pk_id 값 이상한 경우
+        '500':
+          description: 서버오류
+  /users/info/update:
+    post:
+      security:
+        - jwt: []
+      tags:
+        - users
+      summary: 유저 프로필 정보 수정
+      operationId: postUserInfos
+      description: |-
+        유저 프로필 정보 수정
+      requestBody:
+        description: |-
+          수정할 유저 정보
+          
+          바꾸고 싶은 정보만 기입하면 됨(필요없는 키값 사용 안 해도됨)
+          - `nick_name`: (optional)
+          - `profile_picture`: (optional)
+          - `bio`: (optional)
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nick_name:
+                  type: string
+                  example: "피카츄라이츄츄"
+                profile_picture:
+                  type: string
+                  example: "https://storage.transcendence.io/pikachu_thumbnail.png"
+                bio:
+                  type: string
+                  example: "삐까"
+        required: true
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  intra_pk_id:
+                    type: string
+                    example: "kafoeinfalksdnf"
+                  intra_id:
+                    type: string
+                    example: "pikachu"
+                  nick_name:
+                    type: string
+                    example: ""
+                  profile_picture:
+                    type: string
+                    example: "https://storage.transcendence.io/pikachu_thumbnail.png"
+                  bio:
+                    type: string
+                    example: ""
+                  histories:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        intra_pk_id:
+                          type: string
+                          example: "kjaeifsdfsdf"
+                        intra_id:
+                          type: string
+                          example: "raichu"
+                        nick_name:
+                          type: string
+                          example: "raichuchu"
+                        start_time:
+                          type: string
+                          format: date-time
+                          example: "2024-01-19T17:32:28Z"
+                        score:
+                          type: integer
+                          example: 4
+                        opponent_score:
+                          type: integer
+                          example: 7
+                        game_result:
+                          type: string
+                          enum: [win, loose, win_by_other, loose_by_other]
+                          example: win
+        '400':
+          description: 디코딩 실패 혹은 JWT 토큰이 포함되지 않은 경우
+        '401':
+          description: JWT 토큰 만료
+        '500':
+          description: 서버오류
+  /users/info/update/image:
+    post:
+      security:
+        - jwt: []
+      tags:
+        - users
+      summary: 유저 프로필 사진 업로드
+      description: |-
+        유저 프로필 사진 업로드
+        
+        멀티파트 요청을 통해 사진을 서버로 보내면,  
+        서버에서는 원격 저장소에 사진파일을 저장하고, 그 경로를 디비에 저장해놓습니다.
+        
+        응답으로 원격저장소 경로 값을 받습니다.
+      requestBody:
+        content: 
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                profile_image:
+                  type: string
+                  format: base64
+            encoding:
+              profile_image:
+                contentType: image/png, image/jpeg, imgage/jpg, image/svg
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  file_url:
+                    type: string
+                    example: "/media/pikachu_thumbnail2.jpeg"
+        '400':
+          description: 디코딩 실패 혹은 JWT 토큰이 포함되지 않은 경우
+        '401':
+          description: JWT 토큰 만료
+        '500':
+          description: 서버오류
+  /users/info/search:
+    get:
+      security:
+        - jwt: []
+      tags:
+        - users
+      summary: 친구 검색
+      description: |-
+        해당 쿼리를 포함하는 모든 유저 검색
+      parameters:
+        - name: key_word
+          in: query
+          description: 인트라 아이디 쿼리(키워드)
+          required: true
+          schema:
+            type: string
+            example: "intra_id_like"
+      responses:
+        '200':
+          description: successful operation (유저 못찾을 경우 빈 리스트 반환)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_profiles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        intra_pk_id:
+                          type: string
+                          example: "110202"
+                        intra_id:
+                          type: string
+                          example: "42인트라 아이디"
+                        nick_name:
+                          type: string
+                          example: "수정가능한 닉네임"
+                        is_login:
+                          type: boolean
+                          example: true
+                        is_friend:
+                          type: boolean
+                          example: true
+        '400':
+          description: 디코딩 실패 혹은 JWT 토큰이 포함되지 않은 경우
+        '401':
+          description: JWT 토큰 만료
+        '500':
+          description: 서버오류
+  /friends/list:
+    get:
+      security:
+        - jwt: []
+      tags:
+        - friends
+      summary: 친구 리스트 반환
+      description: |-
+        친구 리스트 반환
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  friends:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        intra_pk_id:
+                          type: string
+                          example: "110202"
+                        friend_name:
+                          type: string
+                          example: "42인트라 아이디"
+                        is_login:
+                          type: boolean
+                          example: true
+        '400':
+          description: 디코딩 실패 혹은 JWT 토큰이 포함되지 않은 경우
+        '401':
+          description: JWT 토큰 만료
+        '500':
+          description: 서버오류
+  /friends/add:
+    post:
+      security:
+        - jwt: []
+      tags:
+        - friends
+      summary: 친구 추가
+      description: |-
+        친구 추가
+      parameters:
+        - name: friend_intra_pk_id
+          in: query
+          description: 추가할 친구의 인트라 PK 값
+          required: true
+          schema:
+            type: string
+            example: "seonghwc"
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "ejachoi가 성공적으로 seonghwc를 친구로 등록하였습니다."
+        '400':
+          description: 디코딩 실패 혹은 JWT 토큰이 포함되지 않은 경우
+        '401':
+          description: JWT 토큰 만료
+        '404':
+          description: 없는 pk값
+        '500':
+          description: 서버오류
+  /friends/delete:
+    delete:
+      security:
+        - jwt: []
+      tags:
+        - friends
+      summary: 친구 삭제
+      description: |-
+        친구 삭제
+      parameters:
+        - name: friend_intra_pk_id
+          in: query
+          description: 삭제할 친구의 인트라 PK 값
+          required: true
+          schema:
+            type: string
+            example: "seonghwc"
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  intra_pk_id:
+                    type: string
+                    example: "ejachoi가 성공적으로 seonghwc를 성공적으로로 삭제하였습니다."
+        '400':
+          description: 디코딩 실패 혹은 JWT 토큰이 포함되지 않은 경우
+        '401':
+          description: JWT 토큰 만료
+        '404':
+          description: 없는 pk값
+        '500':
+          description: 서버오류
+  /loginHistories/create:
+    post:
+      security:
+        - jwt: []
+      tags:
+        - loginHistories
+      summary: 로그인 중 
+      description: |-
+        로그인 중 (5초마다 프론트에서 백으로 날림)
+      responses:
+        '201':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Login 정보를 성공적으로 저장했습니다."
+        '400':
+          description: 디코딩 실패 혹은 JWT 토큰이 포함되지 않은 경우
+        '401':
+          description: JWT 토큰 만료
+        '500':
+          description: 서버오류
+components:
+  securitySchemes:
+    jwt:
+      type: apiKey
+      in: header
+      name: JWT

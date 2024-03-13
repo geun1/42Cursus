@@ -1,0 +1,100 @@
+version: '3'
+
+services:
+  frontend:
+    depends_on:
+      - backend
+    networks:
+      - frontend
+      - backend
+    image: ts/front
+    build: ./Transcendence-front
+    container_name: ts-front
+    ports:
+      - "${FRONTEND_HTTPS_PORT:-443}:443"
+    environment:
+      TS_HTTP_PROTOCOL: "${TS_HTTP_PROTOCOL:-https}"
+      TS_SOCKET_PROTOCOL: "${TS_SOCKET_PROTOCOL:-wss}"
+      TS_HOST_IP: "${TS_HOST_IP}"
+      TS_SERVER_PORT: "${TS_SERVER_PORT:-8000}"
+      TS_OAUTH_URL: "${TS_OAUTH_URL}"
+      TS_WEB_SERVER_PORT: "${TS_WEB_SERVER_PORT:-443}"
+    volumes:
+      - ./Transcendence-front/public:/app/public
+      - ./Transcendence-front/src:/app/src
+      - ./Transcendence-front/package.json:/app/package.json
+      - ./Transcendence-front/vite.config.js:/app/vite.config.js
+      - ./Transcendence-front/../tls:/app/tls/
+  backend:
+    depends_on:
+      - db
+    networks:
+      - backend
+    image: ts/back
+    build: ./Transcendence-back
+    container_name: ts-back
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      SECRET_KEY: "${SECRET_KEY}"
+      FT_CLIENT_ID: "${FT_CLIENT_ID}"
+      FT_CLIENT_SECRET: "${FT_CLIENT_SECRET}"
+      HTTP_PROTOCOL: "${HTTP_PROTOCOL:-https}"
+      FRONT_IP: "${FRONT_IP}"
+      FRONT_PORT: "${FRONT_PORT:-443}"
+      DATABASE_NAME: "${DATABASE_NAME}"
+      DATABASE_USER: "${DATABASE_USER}"
+      DATABASE_PASSWORD: "${DATABASE_PASSWORD}"
+      DATABASE_HOST: "${DATABASE_HOST:-ts-db}"
+      DATABASE_PORT: "${DATABASE_PORT:-5432}"
+      EMAIL_HOST: "${EMAIL_HOST:-smtp.gmail.com}"
+      EMAIL_PORT: "${EMAIL_PORT:-587}"
+      EMAIL_HOST_USER: "${EMAIL_HOST_USER}"
+      EMAIL_HOST_PASSWORD: "${EMAIL_HOST_PASSWORD}"
+    volumes:
+      - ./Transcendence-back/../tls:/reminder/tls/
+      - static:/reminder/media
+  db:
+    networks:
+      - backend
+    image: postgres
+    container_name: ts-db
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+      PGDATA: /data/postgres
+    volumes:
+      - db:/data/postgres
+      - db:/var/lib/postgresql/data
+  pgadmin:
+    depends_on:
+      - db
+    networks:
+      - backend
+    image: elestio/pgadmin
+    container_name: ts-pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+        PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+        PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+        PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+     - ./servers.json:/pgadmin4/servers.json
+     - pgadmin:/var/lib/pgadmin
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  static:
+  db:
+  pgadmin:
